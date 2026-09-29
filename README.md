@@ -68,6 +68,8 @@ Each project pairs a working prototype with a clearly defined business use case.
 | 9 | AI Interview Coach | Local LLM | *Private* |
 | 10 | Smart Caption | Full-Stack SaaS | *Private beta* |
 | 11 | Fine-Tuned Local Financial LLM | Fine Tuning for Finance | *Private* |
+| 12 | Video Intelligence Assistant — Local-First RAG over Long Videos | Open-source models - Monitoring & Evaluation RAG App | *Private* |
+
 
 
 ---
