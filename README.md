@@ -376,21 +376,6 @@ The merged model can be converted to GGUF format (Q4_K_M quantization) for:
   `ollama run hf.co/mohammadbk321/financial-qwen-3b-GGUF`
   
 ---
-| 12 | Video Intelligence Assistant                | Local RAG + Evaluation  | *Private*                                                  |
- 
- 
-<!-- ========== 2) ADD / EXTEND THESE ROWS IN THE "Tech Stack" TABLE ========== -->
- 
-| **Models / Providers**     | … · Ollama (Llama 3.2, Qwen3) · Groq Whisper (large-v3)                                                              |
-| **RAG & Vector DBs**       | Pinecone · ChromaDB · SQLite FTS5 (BM25) · sqlite-vec · BGE cross-encoder reranker                                   |
-| **Evaluation**             | Promptfoo · DeepEval · LLM-as-a-judge                                                                                |
-| **Observability**          | Langfuse (self-hosted)                                                                                               |
-| **Frontend**               | Streamlit · Next.js · React (Vite) · Tailwind CSS                                                                    |
- 
- 
-<!-- ========== 3) PROJECT SECTION ========== -->
- 
----
  
 ### 12. 🎥 Video Intelligence Assistant — Local-First RAG over Long Videos
  
