@@ -444,3 +444,4 @@ An AI app that summarizes and answers questions is only as trustworthy as its ev
    <img width="1280" height="652" alt="IMAGE 2026-09-29 18:38:23" src="https://github.com/user-attachments/assets/9d1f7346-a295-4903-90a1-ffddfc211fb8" />
 <img width="1280" height="640" alt="IMAGE 2026-09-29 18:37:40" src="https://github.com/user-attachments/assets/80531c91-22cc-4528-9a1f-0155005e1c77" />
 <img width="1280" height="422" alt="IMAGE 2026-09-29 18:37:37" src="https://github.com/user-attachments/assets/6d4e52f6-49c3-420f-aa24-d9b006f519bb" />
+<img width="1280" height="515" alt="IMAGE 2026-09-29 18:56:20" src="https://github.com/user-attachments/assets/af35539f-535c-470b-806d-223ef589361b" />
