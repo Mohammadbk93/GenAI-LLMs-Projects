@@ -393,6 +393,10 @@ The merged model can be converted to GGUF format (Q4_K_M quantization) for:
 ### 12. 🎥 Video Intelligence Assistant — Local-First RAG over Long Videos
  
 > 🔒 Personal productivity tool · private repo.
+
+<img width="600" height="302" alt="IMG_3564" src="https://github.com/user-attachments/assets/e58f85a6-f105-4b74-8837-9cd40926768a" />
+
+
  
 <!-- Drop 2–4 screenshots here: report view, claims with timestamps, Ask chat, evaluation dashboard -->
  
