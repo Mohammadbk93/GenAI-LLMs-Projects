@@ -372,3 +372,72 @@ The merged model can be converted to GGUF format (Q4_K_M quantization) for:
 - **Docker deployment** — single portable `.gguf` file, no environment setup required
 - **Team distribution** — one file shared across the team, pulled directly via
   `ollama run hf.co/mohammadbk321/financial-qwen-3b-GGUF`
+  
+---
+| 12 | Video Intelligence Assistant                | Local RAG + Evaluation  | *Private*                                                  |
+ 
+ 
+<!-- ========== 2) ADD / EXTEND THESE ROWS IN THE "Tech Stack" TABLE ========== -->
+ 
+| **Models / Providers**     | … · Ollama (Llama 3.2, Qwen3) · Groq Whisper (large-v3)                                                              |
+| **RAG & Vector DBs**       | Pinecone · ChromaDB · SQLite FTS5 (BM25) · sqlite-vec · BGE cross-encoder reranker                                   |
+| **Evaluation**             | Promptfoo · DeepEval · LLM-as-a-judge                                                                                |
+| **Observability**          | Langfuse (self-hosted)                                                                                               |
+| **Frontend**               | Streamlit · Next.js · React (Vite) · Tailwind CSS                                                                    |
+ 
+ 
+<!-- ========== 3) PROJECT SECTION ========== -->
+ 
+---
+ 
+### 12. 🎥 Video Intelligence Assistant — Local-First RAG over Long Videos
+ 
+> 🔒 Personal productivity tool · private repo.
+ 
+<!-- Drop 2–4 screenshots here: report view, claims with timestamps, Ask chat, evaluation dashboard -->
+ 
+A **local-first RAG system** that answers the question I actually have before pressing play on a long talk or lecture: *is this worth my next two hours — and if so, which parts?* Paste a URL or drop a file; ~15 minutes later (for a 2-hour video) you get a watch/skip verdict, quote-backed claims with clickable timestamps, and a chatbot that answers with **verified citations**.
+ 
+- **Why watch this** — audience, topics, and focus: the "should I press play" call.
+- **Grounded claims** — facts, challenges, and solutions, each backed by a **verbatim quote** located in the transcript. Claims whose quote can't be found are dropped, not shown (86% grounding rate).
+- **Synced transcript + highlights** — click anything and the video seeks there.
+- **Ask** — chat over the video; every citation is validated against the passages actually retrieved, and invented ones are stripped before display.
+- **Monitoring & evaluation** — latency, cost, cache reuse, and thumbs up/down traced to self-hosted Langfuse; retrieval and answer quality measured on demand.
+```
+URL / file → yt-dlp (audio only) → ffmpeg (16 kHz mono) → Groq Whisper (10-min chunks, 4 in parallel)
+→ ~30s segments → Qwen3 map-reduce analysis → quote-grounded claim extraction
+→ BM25 (SQLite FTS5) + vectors (sqlite-vec) → RRF fusion → BGE cross-encoder rerank → cited answer
+```
+ 
+**Key design decisions**
+ 
+- **Quotes, not timestamps** — the LLM returns a verbatim quote and the timestamp is derived by locating it in the transcript, so every citation points at text that demonstrably exists.
+- **Two-stage hybrid retrieval** — BM25 + dense vectors fused with Reciprocal Rank Fusion (~30 ms), then a cross-encoder reranker (~890 ms on Apple MPS).
+- **Adaptive K** — retrieval depth scales with video length (~15%, floor 8, ceiling 24) instead of one fixed constant.
+- **Cache keyed on content *and* model** — swapping the analysis model reuses the transcript; a repeated URL finishes in ~2 s.
+- **One SQLite file** — runs, cache, chat history, BM25 index and vector index, with transactional deletes.
+**Retrieval results** — 104-minute lecture, 20-question synthetic golden set:
+ 
+| Step                          | Recall@K  | Misses |
+| ----------------------------- | --------- | ------ |
+| Baseline (fixed K, 1 stage)   | 0.45      | 11/20  |
+| + nomic task prefixes         | 0.50      | 10/20  |
+| + adaptive K                  | 0.80      | 4/20   |
+| + BGE cross-encoder rerank    | 0.95      | 1/20   |
+| **Real content**              | **1.00**  | **0/20** · MRR 0.717 |
+ 
+**Answer quality** (DeepEval, `gpt-4o-mini` judge): faithfulness **0.93** (from 0.85) · answer relevancy 0.97 · contextual precision 0.88.
+**Performance:** 90-min video in 12.5 min first run, 16 s cached · sub-linear scaling (2× transcript → +23% time) · **252 tests** with LLM and network stubbed.
+ 
+**What measurement proved wrong** — four confident ideas, all reverted:
+ 
+| I proposed                                   | The harness said                         |
+| -------------------------------------------- | ---------------------------------------- |
+| `ms-marco-MiniLM` reranker (standard choice) | MRR **0.263 → 0.191**, worse than no rerank |
+| Neighbour-chunk expansion for recall         | contextual recall **0.898 → 0.754**      |
+| Top-5 passages instead of 15                 | contextual precision **0.881 → 0.659**   |
+| Bigger local model (`qwen3.5:9b`)            | failures below threshold **8 → 11**      |
+ 
+**Key takeaway:** in RAG, the evaluation harness matters more than any single component — every major gain here came from measuring, and every "obvious" improvement was checked before it was kept. *Next: pin the golden set, measure the noise floor, and grow n to 50–100.*
+ 
+**Stack:** Python · FastAPI · React (Vite) · TypeScript · Tailwind CSS · Ollama (`qwen3:8b`) · Groq Whisper `large-v3` · `nomic-embed-text` · `BAAI/bge-reranker-base` · SQLite (FTS5 + sqlite-vec) · yt-dlp · ffmpeg · Langfuse · DeepEval · Docker
