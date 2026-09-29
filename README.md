@@ -395,53 +395,50 @@ The merged model can be converted to GGUF format (Q4_K_M quantization) for:
 > 🔒 Personal productivity tool · private repo.
 
 <img width="600" height="302" alt="IMG_3564" src="https://github.com/user-attachments/assets/e58f85a6-f105-4b74-8837-9cd40926768a" />
+ 
 
 
  
-<!-- Drop 2–4 screenshots here: report view, claims with timestamps, Ask chat, evaluation dashboard -->
+#### The problem
  
-A **local-first RAG system** that answers the question I actually have before pressing play on a long talk or lecture: *is this worth my next two hours — and if so, which parts?* Paste a URL or drop a file; ~15 minutes later (for a 2-hour video) you get a watch/skip verdict, quote-backed claims with clickable timestamps, and a chatbot that answers with **verified citations**.
+I bookmark long videos — conference talks, lectures, interviews — meaning to watch them "one day." That day rarely comes: a 2-hour video is a big time commitment, so it keeps getting pushed down the list and eventually forgotten. The frustrating part is that these videos usually *do* contain valuable information — I just never get to it, because watching is the only way in.
  
-- **Why watch this** — audience, topics, and focus: the "should I press play" call.
-- **Grounded claims** — facts, challenges, and solutions, each backed by a **verbatim quote** located in the transcript. Claims whose quote can't be found are dropped, not shown (86% grounding rate).
-- **Synced transcript + highlights** — click anything and the video seeks there.
-- **Ask** — chat over the video; every citation is validated against the passages actually retrieved, and invented ones are stripped before display.
-- **Monitoring & evaluation** — latency, cost, cache reuse, and thumbs up/down traced to self-hosted Langfuse; retrieval and answer quality measured on demand.
+#### Why it matters
+ 
+The information isn't the problem — access to it is. I needed a way to get the substance of a long video without watching it end to end, and to trust that substance enough to act on it, not just skim a vague AI summary and hope it's accurate.
+ 
+#### What it does
+ 
+- **Summarizes long videos** into their core concepts and structure — what it's about, who it's for.
+- **Extracts facts grounded in the transcript** — every key point is backed by a real quote from the video, not a guess.
+- **Surfaces challenges and solutions discussed**, so I get the substance of a talk, not just a topic list.
+- **Chatbot to dig deeper** — I can ask follow-up questions and get answers cited to the exact moment they were said.
+- **Runs on local, open-source models** — private and effectively free to run as much as I want.
 ```
-URL / file → yt-dlp (audio only) → ffmpeg (16 kHz mono) → Groq Whisper (10-min chunks, 4 in parallel)
-→ ~30s segments → Qwen3 map-reduce analysis → quote-grounded claim extraction
-→ BM25 (SQLite FTS5) + vectors (sqlite-vec) → RRF fusion → BGE cross-encoder rerank → cited answer
+paste URL / drop file → transcribe → analyze → extract grounded claims → index
+        → chat: ask a question → retrieve → answer with verified citations
 ```
  
-**Key design decisions**
+#### Stack
  
-- **Quotes, not timestamps** — the LLM returns a verbatim quote and the timestamp is derived by locating it in the transcript, so every citation points at text that demonstrably exists.
-- **Two-stage hybrid retrieval** — BM25 + dense vectors fused with Reciprocal Rank Fusion (~30 ms), then a cross-encoder reranker (~890 ms on Apple MPS).
-- **Adaptive K** — retrieval depth scales with video length (~15%, floor 8, ceiling 24) instead of one fixed constant.
-- **Cache keyed on content *and* model** — swapping the analysis model reuses the transcript; a repeated URL finishes in ~2 s.
-- **One SQLite file** — runs, cache, chat history, BM25 index and vector index, with transactional deletes.
-**Retrieval results** — 104-minute lecture, 20-question synthetic golden set:
+Python · FastAPI · React (Vite) · TypeScript · Tailwind CSS · Ollama (`qwen3:8b`) · Groq Whisper `large-v3` · `nomic-embed-text` · `BAAI/bge-reranker-base` · SQLite (FTS5 + sqlite-vec) · yt-dlp · ffmpeg · Langfuse · DeepEval · Docker
  
-| Step                          | Recall@K  | Misses |
-| ----------------------------- | --------- | ------ |
-| Baseline (fixed K, 1 stage)   | 0.45      | 11/20  |
-| + nomic task prefixes         | 0.50      | 10/20  |
-| + adaptive K                  | 0.80      | 4/20   |
-| + BGE cross-encoder rerank    | 0.95      | 1/20   |
-| **Real content**              | **1.00**  | **0/20** · MRR 0.717 |
+#### Challenges & how I solved them
  
-**Answer quality** (DeepEval, `gpt-4o-mini` judge): faithfulness **0.93** (from 0.85) · answer relevancy 0.97 · contextual precision 0.88.
-**Performance:** 90-min video in 12.5 min first run, 16 s cached · sub-linear scaling (2× transcript → +23% time) · **252 tests** with LLM and network stubbed.
+- **The model was bad at timestamps** (mangled or wrong). → Never ask for one: extract a verbatim quote and *derive* the timestamp by locating it in the transcript. A quote that can't be found is dropped rather than shown.
+- **Long videos broke the model's context and slowed everything down.** → Split the transcript into overlapping chunks for retrieval and separate, larger windows for claim extraction, so each task gets the right amount of context instead of one setting for both.
+- **Plain vector search missed relevant passages.** → Combined keyword search (BM25) and vector search, fused together, then reranked with a cross-encoder — this alone raised retrieval accuracy well past either method on its own.
+- **A fixed retrieval depth worked for short videos but failed on long ones.** → Made retrieval depth scale with video length instead of using one constant for every video.
+#### Evaluation & monitoring — the part I care about most
  
-**What measurement proved wrong** — four confident ideas, all reverted:
- 
-| I proposed                                   | The harness said                         |
-| -------------------------------------------- | ---------------------------------------- |
-| `ms-marco-MiniLM` reranker (standard choice) | MRR **0.263 → 0.191**, worse than no rerank |
-| Neighbour-chunk expansion for recall         | contextual recall **0.898 → 0.754**      |
-| Top-5 passages instead of 15                 | contextual precision **0.881 → 0.659**   |
-| Bigger local model (`qwen3.5:9b`)            | failures below threshold **8 → 11**      |
- 
-**Key takeaway:** in RAG, the evaluation harness matters more than any single component — every major gain here came from measuring, and every "obvious" improvement was checked before it was kept. *Next: pin the golden set, measure the noise floor, and grow n to 50–100.*
- 
-**Stack:** Python · FastAPI · React (Vite) · TypeScript · Tailwind CSS · Ollama (`qwen3:8b`) · Groq Whisper `large-v3` · `nomic-embed-text` · `BAAI/bge-reranker-base` · SQLite (FTS5 + sqlite-vec) · yt-dlp · ffmpeg · Langfuse · DeepEval · Docker
+An AI app that summarizes and answers questions is only as trustworthy as its evaluation. I treated this as a core part of the system, not an afterthought:
+
+- **Retrieval, measured, not guessed:** built a test set of questions with known correct answers and measured whether the system actually retrieved them — Recall@K went from **0.45 → 1.00** across four measured improvements.
+- **Answer quality, judged automatically:** used DeepEval to score faithfulness (is the answer actually supported by the video?), which improved from **0.85 → 0.93** after tightening the grounding step.
+- **Always-on monitoring:** every run is traced in self-hosted Langfuse — latency, cost, and my own thumbs up/down — so I can see where quality or speed drops before it becomes a pattern.
+- **Tested against my own bad ideas:** several "obvious" improvements (a different reranker, feeding the model less context) were tried, measured, and reverted because they made results worse — proof the evaluation loop actually drives decisions, not just reports numbers.
+**Result:** a tool I trust enough to actually use — I now go through bookmarked videos I would otherwise have never watched, get their key points and reasoning validated against the source, and only spend full viewing time on the ones that earn it.
+
+   <img width="1280" height="652" alt="IMAGE 2026-09-29 18:38:23" src="https://github.com/user-attachments/assets/9d1f7346-a295-4903-90a1-ffddfc211fb8" />
+<img width="1280" height="640" alt="IMAGE 2026-09-29 18:37:40" src="https://github.com/user-attachments/assets/80531c91-22cc-4528-9a1f-0155005e1c77" />
+<img width="1280" height="422" alt="IMAGE 2026-09-29 18:37:37" src="https://github.com/user-attachments/assets/6d4e52f6-49c3-420f-aa24-d9b006f519bb" />
