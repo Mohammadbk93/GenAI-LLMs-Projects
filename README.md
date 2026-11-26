@@ -191,6 +191,7 @@ User Input → Planner → Research → Writer → Reflection/Critique → Revis
 **Core agents:** Planner (outline & flow) · Research (Tavily queries, factual grounding) · Writer (integrates outline + research + critique) · Reflection (identifies weaknesses, suggests revisions) · Revision loop (conditional graph routing).
 
 **Stack:** LangGraph · LangChain · OpenAI · Tavily · Streamlit · FPDF
+
 ---
 
 ### 7.  AI Finance Agent
